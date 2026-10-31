@@ -1,14 +1,18 @@
 package com.example.hellocodex;
-import android.app.Activity;
-import android.os.Bundle;
-import android.graphics.Color;
-import android.view.Gravity;
-import android.widget.Button;
-import android.widget.LinearLayout;
-import android.widget.Toast;
+import android.app.*;import android.os.*;import android.graphics.Color;import android.content.*;import android.view.*;import android.widget.*;import java.util.*;
 public class MainActivity extends Activity {
- @Override public void onCreate(Bundle b) { super.onCreate(b);
- LinearLayout root = new LinearLayout(this); root.setGravity(Gravity.CENTER); root.setBackgroundColor(Color.BLACK);
- Button button = new Button(this); button.setText("눌러서 확인"); button.setOnClickListener(v -> Toast.makeText(this, "APK 설치 성공", Toast.LENGTH_LONG).show()); root.addView(button); setContentView(root);
- }
+ final String[][] words={{"apple","사과"},{"bridge","다리"},{"forest","숲"},{"honest","정직한"},{"journey","여행"},{"quiet","조용한"},{"borrow","빌리다"},{"bright","밝은"},{"choose","선택하다"},{"memory","기억"},{"ancient","고대의"},{"improve","개선하다"},{"protect","보호하다"},{"discover","발견하다"},{"patient","인내심 있는"},{"promise","약속"},{"weather","날씨"},{"enough","충분한"},{"future","미래"},{"careful","조심스러운"},{"achieve","달성하다"},{"balance","균형"},{"curious","호기심 많은"},{"effort","노력"},{"valuable","가치 있는"},{"ordinary","평범한"},{"frequent","빈번한"},{"responsible","책임감 있는"},{"challenge","도전"},{"opportunity","기회"}};
+ LinearLayout root,answers; TextView title,word,info,hint; Button[] opts=new Button[4]; Handler h=new Handler(); int stage=1,index=0,penalty=0,correct=0;long started,questionStarted;boolean active=false;String[] choices;int target;Random rng=new Random();
+ int bg=Color.rgb(12,12,14),fg=Color.WHITE,muted=Color.rgb(155,155,160);
+ public void onCreate(Bundle b){super.onCreate(b);home();}
+ TextView text(String s,int size,int color){TextView t=new TextView(this);t.setText(s);t.setTextColor(color);t.setTextSize(size);t.setGravity(Gravity.CENTER);t.setPadding(12,16,12,16);return t;}
+ void base(){root=new LinearLayout(this);root.setOrientation(1);root.setGravity(Gravity.CENTER);root.setPadding(26,24,26,24);root.setBackgroundColor(bg);setContentView(root);}
+ Button button(String s,Runnable action){Button b=new Button(this);b.setText(s);b.setAllCaps(false);b.setTextSize(17);b.setOnClickListener(v->action.run());return b;}
+ void home(){active=false;base();root.addView(text("WORD RUSH",34,fg));root.addView(text("영어 단어 스피드 챌린지",17,muted));int unlocked=getPreferences(0).getInt("unlocked",1);for(int i=1;i<=3;i++){final int st=i;String best=getPreferences(0).getString("best"+i,"-");Button b=button("STAGE "+i+"  |  최고 기록 "+best,()->start(st));b.setEnabled(i<=unlocked);root.addView(b);}root.addView(text("10문제 · 오답 +3초 · 기록은 기기에 저장",13,muted));}
+ void start(int st){stage=st;index=0;penalty=0;correct=0;started=System.currentTimeMillis();active=true;next();}
+ void next(){if(index==10){finish();return;}base();int w=(stage-1)*10+index;target=w;root.addView(text("STAGE "+stage+"  •  "+(index+1)+"/10",15,muted));info=text("시간 0.0초",16,fg);root.addView(info);word=text(words[w][0],35,fg);root.addView(word);hint=text("뜻을 선택하세요",15,muted);root.addView(hint);ArrayList<String> a=new ArrayList<>();a.add(words[w][1]);while(a.size()<4){String v=words[rng.nextInt(words.length)][1];if(!a.contains(v))a.add(v);}Collections.shuffle(a);choices=a.toArray(new String[0]);answers=new LinearLayout(this);answers.setOrientation(1);root.addView(answers);for(int i=0;i<4;i++){final int j=i;opts[i]=button(choices[i],()->pick(j));answers.addView(opts[i]);}questionStarted=System.currentTimeMillis();h.postDelayed(()->{if(active&&index==w%10)hint.setText("힌트: "+words[w][1].substring(0,1)+"…");},2000);h.postDelayed(()->{if(active&&index==w%10)hint.setText("3");},3000);h.postDelayed(()->{if(active&&index==w%10)hint.setText("2");},4000);h.postDelayed(()->{if(active&&index==w%10)hint.setText("1");},5000);h.postDelayed(()->{if(active&&index==w%10){penalty+=3;index++;next();}},6000);tick();}
+ void tick(){if(!active)return; if(info!=null)info.setText(String.format(Locale.KOREA,"시간 %.1f초 (+%d초)",(System.currentTimeMillis()-started)/1000.0,penalty));h.postDelayed(()->{if(active)tick();},150);}
+ void pick(int j){if(!active)return;if(choices[j].equals(words[target][1])){correct++;index++;next();}else{penalty+=3;opts[j].setEnabled(false);opts[j].setText("✕ "+choices[j]);Toast.makeText(this,"오답! +3초",Toast.LENGTH_SHORT).show();}}
+ void finish(){active=false;double elapsed=(System.currentTimeMillis()-started)/1000.0+penalty;String score=String.format(Locale.KOREA,"%.1f초",elapsed);android.content.SharedPreferences p=getPreferences(0);float old=p.getFloat("time"+stage,Float.MAX_VALUE);android.content.SharedPreferences.Editor e=p.edit();if(elapsed<old){e.putFloat("time"+stage,(float)elapsed);e.putString("best"+stage,score);}if(stage<3)e.putInt("unlocked",Math.max(stage+1,p.getInt("unlocked",1)));e.apply();base();root.addView(text("STAGE CLEAR",32,fg));root.addView(text(score,30,fg));root.addView(text("정답 "+correct+"/10  ·  페널티 "+penalty+"초",16,muted));root.addView(button("다시 도전",()->start(stage)));root.addView(button("스테이지 선택",()->home()));}
+ @Override public void onBackPressed(){active=false;home();}
 }
